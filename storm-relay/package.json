@@ -1,0 +1,25 @@
+{
+  "name": "storm-relay",
+  "version": "1.0.0",
+  "description": "Tiny always-on relay for STORM multiplayer rooms — brokers room codes, presence, lobby chat, and (once a game starts) proxies gameplay requests between the room's host and everyone else, so no player ever needs to be reachable from the internet.",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.23.12",
+    "typescript": "^5.7.2"
+  }
+}
