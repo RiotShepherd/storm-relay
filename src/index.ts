@@ -7,12 +7,16 @@ import {
   joinRoom,
   selectSeat,
   transferSupervisor,
+  setVisibility,
   postChat,
   startRoom,
   handleDisconnect,
+  leaveRoom,
+  renamePlayer,
   roomForSocket,
   getRoom,
   publicRoomState,
+  listPublicRooms,
   registerProxyRequest,
   resolveProxyRequest,
 } from "./rooms.js";
@@ -27,6 +31,13 @@ app.use(express.json());
 app.get("/health", (_req, res) => res.status(200).send("ok"));
 app.get("/", (_req, res) => res.status(200).send("STORM relay is running."));
 
+// Plain HTTP rather than a socket event — "Join a Room" wants to show this
+// list before the player has connected/committed to anything, so it
+// shouldn't need a live socket connection just to browse.
+app.get("/api/public-rooms", (_req, res) => {
+  res.json({ rooms: listPublicRooms() });
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: "*" },
@@ -39,11 +50,14 @@ function broadcastRoomState(roomCode: string) {
 }
 
 io.on("connection", (socket: Socket) => {
-  socket.on("room:create", (payload: { displayName?: string }, ack?: (res: any) => void) => {
-    const room = createRoom(socket.id, payload?.displayName ?? "Host");
-    socket.join(room.code);
-    ack?.({ ok: true, room: publicRoomState(room) });
-  });
+  socket.on(
+    "room:create",
+    (payload: { displayName?: string; visibility?: "public" | "private" }, ack?: (res: any) => void) => {
+      const room = createRoom(socket.id, payload?.displayName ?? "Host", payload?.visibility);
+      socket.join(room.code);
+      ack?.({ ok: true, room: publicRoomState(room) });
+    }
+  );
 
   socket.on("room:join", (payload: { code?: string; displayName?: string }, ack?: (res: any) => void) => {
     const result = joinRoom(payload?.code ?? "", socket.id, payload?.displayName ?? "Guest");
@@ -61,6 +75,12 @@ io.on("connection", (socket: Socket) => {
 
   socket.on("room:transferSupervisor", (payload: { toSocketId?: string }, ack?: (res: any) => void) => {
     const result = transferSupervisor(socket.id, payload?.toSocketId ?? "");
+    ack?.(result.ok ? { ok: true } : result);
+    if (result.ok) broadcastRoomState(result.room.code);
+  });
+
+  socket.on("room:setVisibility", (payload: { visibility?: "public" | "private" }, ack?: (res: any) => void) => {
+    const result = setVisibility(socket.id, payload?.visibility ?? "private");
     ack?.(result.ok ? { ok: true } : result);
     if (result.ok) broadcastRoomState(result.room.code);
   });
@@ -123,6 +143,33 @@ io.on("connection", (socket: Socket) => {
       io.to(requesterSocketId).emit("api:response", payload);
     }
   );
+
+  // Explicit "leave this room" for a socket that's staying connected, used
+  // when the Coordination Centre's Join a Room dropdown pulls someone out
+  // of their auto-hosted room and into a different one. Distinct from a
+  // real disconnect: the socket has to actually leave the socket.io
+  // channel itself (a closed connection does that automatically, this one
+  // doesn't) or it'd keep receiving broadcasts for a room it's no longer in.
+  socket.on("room:leave", (_payload: unknown, ack?: (res: any) => void) => {
+    const result = leaveRoom(socket.id);
+    if (result) socket.leave(result.room.code);
+    ack?.({ ok: true });
+    if (!result || result.emptied) return;
+    if (result.hostLeft) {
+      io.to(result.room.code).emit("room:hostLeft");
+      return;
+    }
+    broadcastRoomState(result.room.code);
+  });
+
+  // Renaming now happens from the profile button inside the Coordination
+  // Centre rather than on a dedicated name-entry screen (that screen no
+  // longer exists, STORM auto-hosts straight into a room on launch).
+  socket.on("room:rename", (payload: { displayName?: string }, ack?: (res: any) => void) => {
+    const result = renamePlayer(socket.id, payload?.displayName ?? "");
+    ack?.(result.ok ? { ok: true } : result);
+    if (result.ok) broadcastRoomState(result.room.code);
+  });
 
   socket.on("disconnect", () => {
     const result = handleDisconnect(socket.id);
