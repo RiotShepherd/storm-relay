@@ -27,11 +27,11 @@ app.use(express.json());
 
 // What Render's own health checks hit, and what an UptimeRobot-style
 // monitor should be pointed at to keep a free-tier instance from ever
-// spinning down from inactivity — see the README for why this matters.
+// spinning down from inactivity, see the README for why this matters.
 app.get("/health", (_req, res) => res.status(200).send("ok"));
 app.get("/", (_req, res) => res.status(200).send("STORM relay is running."));
 
-// Plain HTTP rather than a socket event — "Join a Room" wants to show this
+// Plain HTTP rather than a socket event, "Join a Room" wants to show this
 // list before the player has connected/committed to anything, so it
 // shouldn't need a live socket connection just to browse.
 app.get("/api/public-rooms", (_req, res) => {
@@ -95,7 +95,7 @@ io.on("connection", (socket: Socket) => {
   // Only the Supervisor may start; whether the room ends up "solo" or
   // "multiplayer" is decided purely by how many players are present at
   // this moment (see rooms.ts's startRoom). From here on, the host's own
-  // local STORM server is the live game backend — everyone else's
+  // local STORM server is the live game backend, everyone else's
   // gameplay traffic gets proxied to it below.
   socket.on("room:start", (_payload: unknown, ack?: (res: any) => void) => {
     const result = startRoom(socket.id);
@@ -107,7 +107,7 @@ io.on("connection", (socket: Socket) => {
 
   // --- Gameplay proxy (once a room is in_game) ---------------------------
   // A non-host client's STORM game client never talks to the host
-  // directly — it can't, the host usually isn't reachable from the open
+  // directly, it can't, the host usually isn't reachable from the open
   // internet. Instead it sends its /api/* calls here, tagged with a
   // requestId, and this relay hands them to the host's own socket
   // connection. The host's browser makes the real call against its own
@@ -139,7 +139,7 @@ io.on("connection", (socket: Socket) => {
       const room = roomForSocket(socket.id);
       if (!room) return;
       const requesterSocketId = resolveProxyRequest(room, payload.requestId);
-      if (!requesterSocketId) return; // already timed out, or unknown id — drop it
+      if (!requesterSocketId) return; // already timed out, or unknown id, drop it
       io.to(requesterSocketId).emit("api:response", payload);
     }
   );

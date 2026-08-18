@@ -1,12 +1,12 @@
 // The relay's entire job: track who's in which room, broker a small lobby
 // (seats, chat, host/Supervisor), and once a room's game starts, forward
 // gameplay requests between the room's host and everyone else. It never
-// runs any STORM game logic itself — the host's own local STORM server is
+// runs any STORM game logic itself, the host's own local STORM server is
 // still what actually simulates the game; this just moves messages so no
 // player ever needs to be reachable from the internet themselves.
 
 export const SEAT_COUNT = 6;
-const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — easy to read aloud
+const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I, easy to read aloud
 const MAX_CHAT_HISTORY = 200;
 // If the host doesn't answer a proxied request within this long, the
 // requester gets a timeout error back rather than hanging forever (e.g.
@@ -33,8 +33,8 @@ export type RoomStatus = "lobby" | "in_game";
 export type GameMode = "solo" | "multiplayer";
 // "private" (the original and still the default) is only ever joinable by
 // someone who has the 4-letter code. "public" additionally lists the room
-// in listPublicRooms() so it can be browsed and joined with no code at
-// all — see MultiplayerEntry.tsx's "Join a Room" screen.
+// in listPublicRooms(), though no client UI currently browses that list
+// (see RoomLobby.tsx's JoinRoomDropdown, code-entry only for now).
 export type RoomVisibility = "public" | "private";
 
 export interface Room {
@@ -52,7 +52,7 @@ export interface Room {
   pendingProxyRequests: Map<string, { requesterSocketId: string; timer: NodeJS.Timeout }>;
 }
 
-// Public shape sent to clients — strips the internal pending-request map,
+// Public shape sent to clients, strips the internal pending-request map,
 // which is relay bookkeeping only.
 export function publicRoomState(room: Room) {
   return {
@@ -71,7 +71,7 @@ export function publicRoomState(room: Room) {
   };
 }
 
-// The browsable list on "Join a Room" — deliberately thin (just enough to
+// The browsable list on "Join a Room", deliberately thin (just enough to
 // pick one), never the full player list or chat.
 export interface PublicRoomSummary {
   code: string;
@@ -162,7 +162,7 @@ export function joinRoom(
   displayName: string
 ): { ok: true; room: Room } | { ok: false; error: string } {
   const room = rooms.get(code.toUpperCase());
-  if (!room) return { ok: false, error: "No room with that code — check it and try again." };
+  if (!room) return { ok: false, error: "No room with that code, check it and try again." };
   if (room.status !== "lobby") return { ok: false, error: "That game has already started." };
   if (room.players.some((p) => p.socketId === socketId)) return { ok: true, room };
 

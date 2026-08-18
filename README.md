@@ -31,9 +31,9 @@ STORM server exactly as in solo play. This relay only:
    build` → Start Command `npm start` → Instance Type `Free` → Create.)
 
 4. Render will give you a public URL like `https://storm-relay-xxxx.onrender.com`.
-   That's the address STORM's client points at for multiplayer — you'll
-   plug it into the game once the client-side room UI is wired up (next
-   piece of work).
+   In STORM, open Settings (the STORM menu in any window) and paste that
+   URL into "Multiplayer relay" on every player's machine. Leave it empty
+   to use the local relay the game ships with (solo play only).
 
 ### Stopping it from falling asleep
 
